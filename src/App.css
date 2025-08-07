@@ -1,0 +1,140 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #000000;
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.app {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Demo Content Styles */
+.demo-content {
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.demo-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.demo-header h1 {
+  font-size: 3.5rem;
+  font-weight: 300;
+  margin-bottom: 20px;
+  background: linear-gradient(45deg, #ffffff, #cccccc);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+}
+
+.demo-header p {
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 300;
+  text-align: center;
+}
+
+.demo-main {
+  display: grid;
+  gap: 40px;
+  max-width: 800px;
+}
+
+.demo-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.demo-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 16px;
+  color: #ffffff;
+  font-weight: 400;
+}
+
+.demo-section p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 16px;
+}
+
+.demo-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.demo-section li {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 12px;
+  padding-left: 24px;
+  position: relative;
+}
+
+.demo-section li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #007AFF;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .demo-content {
+    padding: 20px;
+  }
+  
+  .demo-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .demo-header p {
+    font-size: 1.2rem;
+  }
+  
+  .demo-section {
+    padding: 20px;
+  }
+  
+  .demo-section h2 {
+    font-size: 1.5rem;
+  }
+  
+  .demo-section p,
+  .demo-section li {
+    font-size: 1rem;
+  }
+}
+
+/* Highlight animation for demonstration */
+@keyframes highlight {
+  0%, 100% { background: rgba(255, 255, 255, 0.05); }
+  50% { background: rgba(0, 122, 255, 0.1); }
+}
+
+.demo-section:last-child {
+  animation: highlight 3s ease-in-out infinite;
+}
