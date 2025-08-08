@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { gsap } from 'gsap';
 import './ScrollVideoHero.css';
 
 const ScrollVideoHero = () => {
@@ -6,6 +7,12 @@ const ScrollVideoHero = () => {
   const containerRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [revealedCards, setRevealedCards] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [clickedElement, setClickedElement] = useState(null);
+  const overlayRef = useRef(null);
+  const morphElementRef = useRef(null);
   useEffect(() => {
     const handleScroll = () => {
       if (!videoRef.current) return;
@@ -97,15 +104,168 @@ const ScrollVideoHero = () => {
 
   const suggestions = suggestionSets[activeSection];
 
-  const openChat = () => {
-    setIsChatOpen(true);
-    // prevent background scroll
+  const openChat = (event, elementType = 'default') => {
+    // Capture click position and element info for morphing
+    const clickedRect = event.currentTarget.getBoundingClientRect();
+    const clickData = {
+      type: elementType,
+      rect: clickedRect,
+      x: clickedRect.left + clickedRect.width / 2,
+      y: clickedRect.top + clickedRect.height / 2,
+      width: clickedRect.width,
+      height: clickedRect.height
+    };
+    
+    setClickedElement(clickData);
+    setIsTransitioning(true);
+    
+    // GSAP Timeline for liquid metal transition
+    const tl = gsap.timeline({
+      onComplete: () => {
+        setIsTransitioning(false);
+        const overlayInput = document.querySelector('.overlay-input');
+        if (overlayInput) overlayInput.focus();
+      }
+    });
+
+    // Prevent background scroll
     document.body.style.overflow = 'hidden';
+
+    // Phase 1: Create and animate morphing element
+    if (morphElementRef.current) {
+      gsap.set(morphElementRef.current, {
+        left: clickData.x,
+        top: clickData.y,
+        width: clickData.width,
+        height: clickData.height,
+        x: '-50%',
+        y: '-50%',
+        borderRadius: '50px',
+        opacity: 1,
+        scale: 1
+      });
+
+      // Morph element animation
+      tl.to(morphElementRef.current, {
+        duration: 0.4,
+        left: '50vw',
+        top: '70vh',
+        width: clickData.width * 1.5,
+        height: clickData.height * 1.2,
+        scale: 1.1,
+        borderRadius: '60px',
+        ease: "power2.out"
+      })
+      .to(morphElementRef.current, {
+        duration: 0.6,
+        left: '50vw',
+        top: 'calc(100vh - 80px)',
+        width: 'min(1000px, 92vw)',
+        height: '64px',
+        borderRadius: '999px',
+        scale: 1,
+        ease: "power3.inOut"
+      })
+      .to(morphElementRef.current, {
+        duration: 0.2,
+        opacity: 0,
+        scale: 1.05,
+        ease: "power2.out"
+      });
+    }
+
+    // Phase 2: Liquid metal reveal (parallel with morph)
+    if (overlayRef.current) {
+      const centerX = (clickData.x / window.innerWidth) * 100;
+      const centerY = (clickData.y / window.innerHeight) * 100;
+      
+      gsap.set(overlayRef.current, {
+        clipPath: `circle(0% at ${centerX}% ${centerY}%)`,
+        opacity: 1
+      });
+
+      tl.to(overlayRef.current, {
+        duration: 0.3,
+        clipPath: `circle(20% at ${centerX}% ${centerY}%)`,
+        ease: "power2.out"
+      }, 0.2)
+      .to(overlayRef.current, {
+        duration: 0.8,
+        clipPath: `circle(150% at 50% 50%)`,
+        ease: "power3.inOut"
+      }, 0.4);
+    }
+
+    // Phase 3: Fade out other elements
+    const elementsToFade = ['.video-background', '.header', '.hero', '.second-section'];
+    elementsToFade.forEach(selector => {
+      const element = document.querySelector(selector);
+      if (element) {
+        tl.to(element, {
+          duration: 0.6,
+          opacity: 0.3,
+          filter: 'blur(2px)',
+          ease: "power2.out"
+        }, 0);
+      }
+    });
+
+    // Phase 4: Show chat overlay
+    tl.call(() => {
+      setIsChatOpen(true);
+    }, [], 0.5);
   };
 
   const closeChat = () => {
     setIsChatOpen(false);
+    setChatInput('');
+    setRevealedCards(0);
+    setIsTransitioning(false);
+    setClickedElement(null);
     document.body.style.overflow = '';
+  };
+
+  const handleChatInputChange = (e) => {
+    const value = e.target.value;
+    setChatInput(value);
+    
+    // Count words (split by spaces, filter out empty strings)
+    const wordCount = value.trim().split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Progressive reveal logic
+    let cardsToReveal = 0;
+    if (value.length > 0) cardsToReveal = 1; // First card on any input
+    if (wordCount >= 2) cardsToReveal = 2;   // Second card after 2 words
+    if (wordCount >= 3) cardsToReveal = 3;   // Third card after 3 words
+    if (wordCount >= 4) cardsToReveal = 4;   // Fourth card after 4 words
+    
+    // GSAP-powered card reveal animation
+    if (cardsToReveal > revealedCards) {
+      // Animate new cards
+      for (let i = revealedCards; i < cardsToReveal; i++) {
+        const card = document.querySelector(`.suggestion-card.s${i + 1}`);
+        if (card) {
+          gsap.fromTo(card, {
+            opacity: 0,
+            rotateY: -90,
+            rotateX: -20,
+            scale: 0.6,
+            z: -100
+          }, {
+            duration: 0.8,
+            opacity: 1,
+            rotateY: 0,
+            rotateX: 0,
+            scale: 1,
+            z: 0,
+            ease: "back.out(1.7)",
+            delay: i * 0.2
+          });
+        }
+      }
+    }
+    
+    setRevealedCards(cardsToReveal);
   };
 
   useEffect(() => {
@@ -186,13 +346,15 @@ const ScrollVideoHero = () => {
           
           {/* Message Entry Box - now part of hero */}
           <div className="message-box">
-            <div className="message-container" onClick={openChat} role="button" tabIndex={0}>
+            <div className="message-container" onClick={(e) => openChat(e, 'hero-message')} role="button" tabIndex={0}>
               <input 
                 type="text" 
                 className="message-input" 
-                placeholder="Type your message here..." 
+                placeholder="Type your message here..."
+                onClick={(e) => openChat(e, 'hero-message')}
+                readOnly
               />
-              <button className="send-button">
+              <button className="send-button" onClick={(e) => openChat(e, 'hero-message')}>
                 Send
               </button>
             </div>
@@ -214,23 +376,38 @@ const ScrollVideoHero = () => {
           
           {/* Talk to Jade Button */}
           <div className="jade-chat-bubble">
-            <button className="jade-chat-button" onClick={openChat}>
+            <button className="jade-chat-button" onClick={(e) => openChat(e, 'jade-button')}>
               Talk to Jade
             </button>
           </div>
         </div>
       </section>
 
-      {/* Full-screen chat overlay */}
-      <div className={`chat-overlay ${isChatOpen ? 'open' : ''}`} aria-hidden={!isChatOpen}>
-        <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
-        {/* Background layer handled in CSS; we only need content */}
+      {/* GSAP-powered morphing transition element */}
+      {isTransitioning && (
+        <div 
+          ref={morphElementRef}
+          className="gsap-morph-element"
+        />
+      )}
 
+      {/* Full-screen chat overlay */}
+      <div 
+        ref={overlayRef}
+        className={`chat-overlay ${isChatOpen ? 'open' : ''}`} 
+        aria-hidden={!isChatOpen}
+      >
+        <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
+        
         <div className="overlay-content">
           {/* Suggestion Cards */}
           <div className="suggestions-grid">
             {suggestions.map((q, idx) => (
-              <button key={idx} className={`suggestion-card s${idx + 1}`}>
+              <button 
+                key={idx} 
+                className={`suggestion-card s${idx + 1}`}
+                style={{ opacity: 0 }} // GSAP controls visibility
+              >
                 <span className="suggestion-text">{q}</span>
                 <span className="suggestion-arrow">→</span>
               </button>
@@ -239,7 +416,12 @@ const ScrollVideoHero = () => {
 
           {/* Rolling message bar */}
           <div className="overlay-message-bar">
-            <input className="overlay-input" placeholder="Ask about our service..." />
+            <input 
+              className="overlay-input" 
+              placeholder="Ask about our service..." 
+              value={chatInput}
+              onChange={handleChatInputChange}
+            />
             <button className="overlay-send">→</button>
           </div>
         </div>

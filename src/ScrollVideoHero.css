@@ -407,27 +407,46 @@
 }
 
 /* ======================== */
-/* Full-screen Chat Overlay */
+/* GSAP-Powered Chat Overlay */
 /* ======================== */
 .chat-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 400ms ease, backdrop-filter 400ms ease;
   z-index: 10000;
   /* Show only background image when overlay is open */
-  background: url('../Images/Untitled design.jpg') center/cover no-repeat;
+  background: url('../Images/Background.jpg') center/cover no-repeat;
+  /* GSAP controls clip-path - no CSS transitions needed */
+  clip-path: circle(0% at 50% 50%);
 }
 
 .chat-overlay.open {
-  opacity: 1;
   pointer-events: auto;
+  /* GSAP handles all animations */
 }
 
-/* Hide all regular UI behind overlay when open */
-.chat-overlay.open ~ * {
-  visibility: hidden;
+/* Hide video and other content when overlay is fully open */
+.scroll-video-container:has(.chat-overlay.open) .video-background,
+.scroll-video-container:has(.chat-overlay.open) .header,
+.scroll-video-container:has(.chat-overlay.open) .hero,
+.scroll-video-container:has(.chat-overlay.open) .second-section {
+  display: none;
+}
+
+/* ======================== */
+/* GSAP-Powered Morphing Element */
+/* ======================== */
+.gsap-morph-element {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  pointer-events: none;
+  opacity: 0;
+  /* GSAP controls all properties - no CSS animations needed */
 }
 
 .chat-close {
@@ -441,6 +460,16 @@
   border-radius: 50%;
   font-size: 22px;
   cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.chat-close:hover {
+  background: rgba(255,255,255,1);
+  transform: scale(1.1);
 }
 
 .overlay-content {
@@ -475,10 +504,13 @@
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0,0,0,0.25);
   transition: transform 220ms ease, box-shadow 220ms ease;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  /* GSAP controls opacity and transforms */
 }
 
 .suggestion-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-3px) rotateY(2deg);
   box-shadow: 0 16px 40px rgba(0,0,0,0.35);
 }
 
