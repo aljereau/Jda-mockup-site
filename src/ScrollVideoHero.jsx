@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import './ScrollVideoHero.css';
 
 const ScrollVideoHero = () => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
       if (!videoRef.current) return;
@@ -71,8 +72,49 @@ const ScrollVideoHero = () => {
     };
   }, []);
 
+  // Work out which section the user is on to provide contextual suggestions
+  const activeSection = useMemo(() => {
+    if (scrollProgress < 0.35) return 'hero';
+    return 'solutions';
+  }, [scrollProgress]);
 
+  const suggestionSets = useMemo(
+    () => ({
+      hero: [
+        'What is the difference between Local AI and Cloud AI?',
+        'How secure is on-premise AI vs cloud-based solutions?',
+        'Can you integrate with our existing data systems?'
+      ],
+      solutions: [
+        'Which AI solution fits my business needs best?',
+        'How long does a typical on-premise deployment take?',
+        'What are the costs compared to SaaS AI tools?',
+        'Can models be customized for our workflows?'
+      ]
+    }),
+    []
+  );
 
+  const suggestions = suggestionSets[activeSection];
+
+  const openChat = () => {
+    setIsChatOpen(true);
+    // prevent background scroll
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeChat = () => {
+    setIsChatOpen(false);
+    document.body.style.overflow = '';
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeChat();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   return (
     <div ref={containerRef} className="scroll-video-container">
       {/* Video Background */}
@@ -144,7 +186,7 @@ const ScrollVideoHero = () => {
           
           {/* Message Entry Box - now part of hero */}
           <div className="message-box">
-            <div className="message-container">
+            <div className="message-container" onClick={openChat} role="button" tabIndex={0}>
               <input 
                 type="text" 
                 className="message-input" 
@@ -172,12 +214,36 @@ const ScrollVideoHero = () => {
           
           {/* Talk to Jade Button */}
           <div className="jade-chat-bubble">
-            <button className="jade-chat-button">
+            <button className="jade-chat-button" onClick={openChat}>
               Talk to Jade
             </button>
           </div>
         </div>
       </section>
+
+      {/* Full-screen chat overlay */}
+      <div className={`chat-overlay ${isChatOpen ? 'open' : ''}`} aria-hidden={!isChatOpen}>
+        <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
+        {/* Background layer handled in CSS; we only need content */}
+
+        <div className="overlay-content">
+          {/* Suggestion Cards */}
+          <div className="suggestions-grid">
+            {suggestions.map((q, idx) => (
+              <button key={idx} className={`suggestion-card s${idx + 1}`}>
+                <span className="suggestion-text">{q}</span>
+                <span className="suggestion-arrow">→</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Rolling message bar */}
+          <div className="overlay-message-bar">
+            <input className="overlay-input" placeholder="Ask about our service..." />
+            <button className="overlay-send">→</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

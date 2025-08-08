@@ -405,3 +405,154 @@
     padding: 14px 28px;
   }
 }
+
+/* ======================== */
+/* Full-screen Chat Overlay */
+/* ======================== */
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease, backdrop-filter 400ms ease;
+  z-index: 10000;
+  /* Show only background image when overlay is open */
+  background: url('../Images/Untitled design.jpg') center/cover no-repeat;
+}
+
+.chat-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hide all regular UI behind overlay when open */
+.chat-overlay.open ~ * {
+  visibility: hidden;
+}
+
+.chat-close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.overlay-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.suggestions-grid {
+  align-self: center;
+  justify-self: center;
+  width: min(1100px, 92vw);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 120px;
+  gap: 28px;
+  padding: 10px 20px;
+}
+
+.suggestion-card {
+  background: rgba(140, 0, 50, 0.92);
+  color: #fff;
+  border: none;
+  border-radius: 28px;
+  padding: 18px 22px;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+}
+
+.suggestion-text {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.suggestion-arrow {
+  background: #fff;
+  color: #8c0032;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+}
+
+/* Layout similar to the provided reference image */
+.suggestions-grid .s1 { grid-column: span 2; grid-row: span 3; }
+.suggestions-grid .s2 { grid-column: span 3; grid-row: span 2; }
+.suggestions-grid .s3 { grid-column: span 1; grid-row: span 1; }
+.suggestions-grid .s4 { grid-column: span 3; grid-row: span 2; }
+.suggestions-grid .s5 { grid-column: span 3; grid-row: span 1; }
+
+.overlay-message-bar {
+  width: min(1000px, 92vw);
+  margin: 0 auto 48px auto;
+  background: rgba(255,255,255,0.9);
+  border-radius: 999px;
+  display: grid;
+  grid-template-columns: 1fr 54px;
+  align-items: center;
+  padding: 10px 10px 10px 22px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+  transform-origin: left center;
+  animation: rollIn 480ms cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+@keyframes rollIn {
+  0% { transform: scaleX(0.2) translateY(25px); opacity: 0; }
+  60% { transform: scaleX(1.05) translateY(0); opacity: 1; }
+  100% { transform: scaleX(1) }
+}
+
+.overlay-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 18px;
+  color: #333;
+}
+
+.overlay-send {
+  background: #8c0032;
+  border: none;
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .suggestions-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 110px; }
+  .suggestions-grid .s2 { grid-column: span 4; }
+  .suggestions-grid .s4 { grid-column: span 4; }
+  .suggestions-grid .s5 { grid-column: span 4; }
+}
+
+@media (max-width: 560px) {
+  .suggestions-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 110px; }
+  .suggestion-text { font-size: 16px; }
+}
