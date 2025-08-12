@@ -14,67 +14,106 @@ const ScrollVideoHero = () => {
   const overlayRef = useRef(null);
   const morphElementRef = useRef(null);
   useEffect(() => {
-    const handleScroll = () => {
-      if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-      const video = videoRef.current;
+    let animationId = null;
+    let isVideoReady = false;
+    let targetTime = 0;
+    let lastScrollTime = 0;
+
+    const handleScroll = () => {
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
-      
-      // Calculate scroll progress as a percentage of total scrollable distance
-      const maxScroll = documentHeight - windowHeight;
-      const progress = Math.max(0, Math.min(1, scrollY / maxScroll));
+      const maxScroll = Math.max(documentHeight - windowHeight, 1);
+      const progress = Math.min(Math.max(scrollY / maxScroll, 0), 1);
       
       setScrollProgress(progress);
 
-      // Update video time based on scroll progress with smoother interpolation
-      if (video.duration && video.readyState >= 1) {
-        const targetTime = progress * video.duration;
-        const currentTime = video.currentTime;
-        
-        // Use requestAnimationFrame for smoother video updates
-        const updateVideoTime = () => {
-          if (Math.abs(targetTime - currentTime) > 0.033) { // ~30fps threshold
-            video.currentTime = targetTime;
-          }
-        };
-        requestAnimationFrame(updateVideoTime);
+      // Calculate target video time more precisely
+      if (isVideoReady && video.duration) {
+        targetTime = progress * video.duration;
+        lastScrollTime = performance.now();
       }
     };
 
-    // Load video metadata to get duration
-    const video = videoRef.current;
-    const handleLoadedMetadata = () => {
-      handleScroll(); // Initial call
+    // Smooth video time animation loop with better interpolation
+    const animateVideo = () => {
+      if (isVideoReady && video.duration && !video.seeking) {
+        const currentTime = video.currentTime;
+        const timeDiff = targetTime - currentTime;
+        const now = performance.now();
+        
+        // Only update if difference is significant and video isn't seeking
+        if (Math.abs(timeDiff) > 0.01) { // Reduced threshold for smoother playback
+          // Use smooth interpolation based on time since last scroll
+          const timeSinceScroll = now - lastScrollTime;
+          const lerpFactor = Math.min(timeSinceScroll > 100 ? 0.8 : 0.3, 1);
+          const newTime = currentTime + (timeDiff * lerpFactor);
+          
+          try {
+            // Ensure we stay within video bounds
+            video.currentTime = Math.max(0, Math.min(newTime, video.duration - 0.1));
+          } catch (e) {
+            // Silently handle video seek errors
+            console.warn('Video seek error:', e);
+          }
+        }
+      }
+      
+      animationId = requestAnimationFrame(animateVideo);
     };
 
-    if (video) {
-      video.addEventListener('loadedmetadata', handleLoadedMetadata);
-      video.addEventListener('canplay', handleLoadedMetadata);
-    }
+    // Video ready state handlers
+    const handleLoadedMetadata = () => {
+      isVideoReady = true;
+      video.preload = 'metadata'; // Ensure metadata is loaded
+      handleScroll(); // Initial call
+      if (animationId === null) {
+        animateVideo(); // Start animation loop
+      }
+    };
 
-    // Throttle scroll events for smoother performance
-    let ticking = false;
+    const handleCanPlay = () => {
+      isVideoReady = true;
+      if (animationId === null) {
+        animateVideo();
+      }
+    };
+
+    // Highly optimized scroll handler
+    let scrollTicking = false;
     const throttledHandleScroll = () => {
-      if (!ticking) {
+      if (!scrollTicking) {
+        scrollTicking = true;
         requestAnimationFrame(() => {
           handleScroll();
-          ticking = false;
+          scrollTicking = false;
         });
-        ticking = true;
       }
     };
 
+    // Event listeners with passive events for better performance
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('canplaythrough', handleCanPlay);
     window.addEventListener('scroll', throttledHandleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
+    window.addEventListener('resize', handleScroll, { passive: true });
+
+    // Initial setup
+    handleScroll();
 
     return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
       window.removeEventListener('scroll', throttledHandleScroll);
       window.removeEventListener('resize', handleScroll);
       if (video) {
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        video.removeEventListener('canplay', handleLoadedMetadata);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('canplaythrough', handleCanPlay);
       }
     };
   }, []);
@@ -217,12 +256,41 @@ const ScrollVideoHero = () => {
   };
 
   const closeChat = () => {
-    setIsChatOpen(false);
-    setChatInput('');
-    setRevealedCards(0);
-    setIsTransitioning(false);
-    setClickedElement(null);
-    document.body.style.overflow = '';
+    setIsTransitioning(true);
+    
+    const tl = gsap.timeline({
+      onComplete: () => {
+        setIsChatOpen(false);
+        setChatInput('');
+        setRevealedCards(0);
+        setIsTransitioning(false);
+        setClickedElement(null);
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Phase 1: Hide chat overlay with reverse liquid metal effect
+    if (overlayRef.current) {
+      tl.to(overlayRef.current, {
+        duration: 0.8,
+        clipPath: 'circle(0% at 50% 50%)',
+        ease: "power3.inOut"
+      });
+    }
+
+    // Phase 2: Restore main elements (parallel with overlay close)
+    const elementsToRestore = ['.video-background', '.header', '.hero', '.second-section'];
+    elementsToRestore.forEach(selector => {
+      const element = document.querySelector(selector);
+      if (element) {
+        tl.to(element, {
+          duration: 0.6,
+          opacity: 1,
+          filter: 'blur(0px)',
+          ease: "power2.out"
+        }, 0.2); // Start slightly after overlay begins closing
+      }
+    });
   };
 
   const handleChatInputChange = (e) => {
@@ -239,27 +307,56 @@ const ScrollVideoHero = () => {
     if (wordCount >= 3) cardsToReveal = 3;   // Third card after 3 words
     if (wordCount >= 4) cardsToReveal = 4;   // Fourth card after 4 words
     
-    // GSAP-powered card reveal animation
+    // GSAP-powered origami card reveal animation
     if (cardsToReveal > revealedCards) {
-      // Animate new cards
+      // Animate new cards with origami flip effect
       for (let i = revealedCards; i < cardsToReveal; i++) {
         const card = document.querySelector(`.suggestion-card.s${i + 1}`);
         if (card) {
-          gsap.fromTo(card, {
+          // Origami-style flip animation with multiple stages
+          const tl = gsap.timeline({ delay: i * 0.15 });
+          
+          // Initial state - folded origami
+          gsap.set(card, {
             opacity: 0,
-            rotateY: -90,
-            rotateX: -20,
+            rotateX: -180,
+            rotateY: -45,
+            rotateZ: 15,
+            scale: 0.3,
+            z: -200,
+            transformOrigin: "center bottom"
+          });
+          
+          // Stage 1: Begin unfold
+          tl.to(card, {
+            duration: 0.4,
+            opacity: 0.7,
+            rotateX: -90,
+            rotateY: -20,
+            rotateZ: 8,
             scale: 0.6,
-            z: -100
-          }, {
-            duration: 0.8,
+            z: -100,
+            ease: "power2.out"
+          })
+          // Stage 2: Main flip
+          .to(card, {
+            duration: 0.5,
             opacity: 1,
-            rotateY: 0,
-            rotateX: 0,
-            scale: 1,
+            rotateX: 10,
+            rotateY: 5,
+            rotateZ: -2,
+            scale: 1.05,
             z: 0,
-            ease: "back.out(1.7)",
-            delay: i * 0.2
+            ease: "power3.out"
+          })
+          // Stage 3: Settle into place
+          .to(card, {
+            duration: 0.3,
+            rotateX: 0,
+            rotateY: 0,
+            rotateZ: 0,
+            scale: 1,
+            ease: "elastic.out(1, 0.5)"
           });
         }
       }
